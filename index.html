@@ -20,11 +20,25 @@
   <body class="bg-slate-50 text-slate-800 antialiased selection:bg-emerald-500 selection:text-white font-sans min-h-screen">
     <div id="root"></div>
     <script>
+      // Auto-update Service Worker
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('SW terdaftar:', reg.scope))
-            .catch(err => console.log('SW gagal:', err));
+            .then(reg => {
+              reg.update();
+              reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                if (installingWorker) {
+                  installingWorker.onstatechange = () => {
+                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      console.log('Versi baru PWA tersedia, memuat ulang...');
+                      window.location.reload();
+                    }
+                  };
+                }
+              };
+            })
+            .catch(err => console.warn('SW register info:', err));
         });
       }
     </script>

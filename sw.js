@@ -1,49 +1,65 @@
-const CACHE_NAME = 'kita-piket-v1';
-const urlsToCache = [
-  './',
-  './index.html',
-  './manifest.json'
-];
+// Kita Piket PWA Service Worker (v2 - Network First for HTML)
+const CACHE_NAME = 'kita-piket-v2';
 
+// Install event - skip waiting to activate immediately
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
-    })
-  );
   self.skipWaiting();
 });
 
+// Activate event - delete old caches (including kita-piket-v1)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        cacheNames.map((name) => {
-          if (name !== CACHE_NAME) {
-            return caches.delete(name);
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            console.log('Cleaning old cache:', key);
+            return caches.delete(key);
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
+// Fetch event: Network-First for HTML/Navigation, Cache-First for static assets
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // Network-First for HTML navigation so users never get stuck with outdated HTML
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-First with Network fallback for static assets
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request).catch(() => {
-        if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
+    caches.match(event.request).then((cached) => {
+      if (cached) return cached;
+      return fetch(event.request).then((response) => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
+        return response;
       });
     })
   );
 });
 
-// Handle incoming push notifications
+// Push notification listener
 self.addEventListener('push', (event) => {
-  let data = { title: 'Kita Piket', body: 'Pengingat jadwal piket Anda hari ini!' };
+  let data = { title: 'Kita Piket 📋', body: 'Pengingat jadwal piket dinas Anda!' };
   if (event.data) {
     try {
       data = event.data.json();
@@ -57,33 +73,21 @@ self.addEventListener('push', (event) => {
     icon: './icon-192.png',
     badge: './icon-192.png',
     vibrate: [100, 50, 100],
-    data: {
-      dateOfArrival: Date.now(),
-      primaryKey: 1
-    },
-    actions: [
-      { action: 'explore', title: 'Buka Jadwal' },
-      { action: 'close', title: 'Tutup' }
-    ]
+    data: { url: './' }
   };
 
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
+  event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
+// Notification click
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
-    clients.matchAll({ type: 'window' }).then((clientList) => {
-      for (const client of clientList) {
-        if (client.url.includes('index.html') && 'focus' in client) {
-          return client.focus();
-        }
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      if (clientList.length > 0) {
+        return clientList[0].focus();
       }
-      if (clients.openWindow) {
-        return clients.openWindow('./');
-      }
+      return clients.openWindow('./');
     })
   );
 });
