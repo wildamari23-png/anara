@@ -12,7 +12,7 @@ import { NotificationModal } from './components/NotificationModal';
 import { SwapShiftModal } from './components/SwapShiftModal';
 
 const MainLayout = () => {
-  const { activeTab } = useApp();
+  const { activeTab, currentUser } = useApp();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showNotifModal, setShowNotifModal] = useState(false);
   const [showSwapModal, setShowSwapModal] = useState(false);
@@ -37,10 +37,10 @@ const MainLayout = () => {
       {/* Floating Bottom Navigation Bar (Mobile Android Dock) */}
       <BottomNav />
 
-      {/* Modals */}
+      {/* Login Modal / Screen (Jika belum login, wajib login dengan password) */}
       <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
+        isOpen={!currentUser || showLoginModal}
+        onClose={currentUser ? () => setShowLoginModal(false) : null}
       />
 
       <NotificationModal

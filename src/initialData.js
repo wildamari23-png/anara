@@ -135,6 +135,7 @@ export const INITIAL_MEMBERS = [
     noHp: '081234567890',
     email: 'fadil@kitapiket.id',
     pin: '1234',
+    password: 'admin123',
     role: 'admin',
     avatar: '👨‍⚕️',
     // Fadil HANYA di RSJ dan RS TK IV sesuai instruksi pengguna
@@ -148,6 +149,7 @@ export const INITIAL_MEMBERS = [
     noHp: '081234567891',
     email: 'awa@kitapiket.id',
     pin: '1234',
+    password: '123456',
     role: 'staf',
     avatar: '👩‍⚕️',
     // Awa di RS TK IV dan KEKE
@@ -161,6 +163,7 @@ export const INITIAL_MEMBERS = [
     noHp: '081234567892',
     email: 'husniar@kitapiket.id',
     pin: '1234',
+    password: '123456',
     role: 'staf',
     avatar: '👩‍⚕️',
     // Husniar hanya di RSJ
@@ -174,6 +177,7 @@ export const INITIAL_MEMBERS = [
     noHp: '081234567893',
     email: 'delya@kitapiket.id',
     pin: '1234',
+    password: '123456',
     role: 'staf',
     avatar: '👩‍⚕️',
     // Delya hanya di RSJ
@@ -187,6 +191,7 @@ export const INITIAL_MEMBERS = [
     noHp: '081234567894',
     email: 'afifah@kitapiket.id',
     pin: '1234',
+    password: '123456',
     role: 'staf',
     avatar: '👩‍⚕️',
     // Nur Afifah hanya di RSJ
@@ -200,6 +205,7 @@ export const INITIAL_MEMBERS = [
     noHp: '081234567895',
     email: 'agnes@kitapiket.id',
     pin: '1234',
+    password: '123456',
     role: 'staf',
     avatar: '👩‍⚕️',
     // Agnes di RSJ dan RSUSI
@@ -213,6 +219,7 @@ export const INITIAL_MEMBERS = [
     noHp: '081234567896',
     email: 'bagas@kitapiket.id',
     pin: '1234',
+    password: '123456',
     role: 'staf',
     avatar: '👨‍⚕️',
     // Bagas hanya di RSUSI
@@ -226,6 +233,7 @@ export const INITIAL_MEMBERS = [
     noHp: '081234567897',
     email: 'risna@kitapiket.id',
     pin: '1234',
+    password: '123456',
     role: 'staf',
     avatar: '👩‍⚕️',
     // Risna hanya di RSUSI

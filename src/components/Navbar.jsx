@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { Bell, Cloud, User, RefreshCw, Calendar, ShieldCheck } from 'lucide-react';
+import { Bell, Cloud, User, RefreshCw, Calendar, ShieldCheck, LogOut } from 'lucide-react';
 
 export const Navbar = ({ onOpenNotif, onOpenLogin, onOpenGitHub }) => {
-  const { currentUser, unreadCount, isSyncing, syncSupabase } = useApp();
+  const { currentUser, logout, unreadCount, isSyncing, syncSupabase } = useApp();
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -78,22 +78,43 @@ export const Navbar = ({ onOpenNotif, onOpenLogin, onOpenGitHub }) => {
           {/* User Profile Pill (Tetap Login Status) */}
           <button
             onClick={onOpenLogin}
-            className="flex items-center gap-2 p-1.5 pr-3 rounded-2xl bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-200 transition-all"
-            title="Sesi Login Aktif - Klik untuk ganti akun"
+            className={`flex items-center gap-2 p-1.5 pr-3 rounded-2xl border transition-all ${
+              currentUser?.role === 'admin'
+                ? 'bg-amber-50/80 hover:bg-amber-100 border-amber-200'
+                : 'bg-blue-50/80 hover:bg-blue-100 border-blue-200'
+            }`}
+            title="Klik untuk ganti akun atau profil"
           >
-            <div className="w-7 h-7 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
+            <div className={`w-7 h-7 rounded-xl text-white flex items-center justify-center text-sm font-bold shadow-sm ${
+              currentUser?.role === 'admin' ? 'bg-amber-600' : 'bg-blue-600'
+            }`}>
               {currentUser?.avatar || '👤'}
             </div>
             <div className="text-left hidden xs:block">
               <p className="text-xs font-bold text-slate-900 leading-tight">
                 {currentUser ? currentUser.nama : 'Masuk'}
               </p>
-              <p className="text-[10px] text-emerald-700 font-bold capitalize flex items-center gap-0.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                {currentUser?.role === 'admin' ? 'Koordinator' : 'Staf'}
+              <p className={`text-[10px] font-bold capitalize flex items-center gap-0.5 ${
+                currentUser?.role === 'admin' ? 'text-amber-700' : 'text-blue-700'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                  currentUser?.role === 'admin' ? 'bg-amber-500' : 'bg-blue-500'
+                }`} />
+                {currentUser?.role === 'admin' ? 'Admin' : 'Staf (Lihat Saja)'}
               </p>
             </div>
           </button>
+
+          {/* Logout Button */}
+          {currentUser && (
+            <button
+              onClick={logout}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-rose-50 border border-slate-200 text-slate-500 hover:text-rose-600 transition-all"
+              title="Keluar / Ganti Akun"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
     </header>

@@ -148,8 +148,12 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Schedule Modification
+  // Schedule Modification with Role Protection (Staf tidak bisa edit)
   const updateSchedule = (memberId, locationId, day, shiftCode) => {
+    if (currentUser?.role === 'staf') {
+      sendWebNotification('Akses Terbatas', 'Akun Staf hanya dapat melihat jadwal sendiri dan tidak diizinkan mengubah jadwal.');
+      return;
+    }
     const key = `${memberId}_${locationId}`;
     setSchedules(prev => ({
       ...prev,
@@ -160,8 +164,12 @@ export const AppProvider = ({ children }) => {
     }));
   };
 
-  // Auto-schedule generator
+  // Auto-schedule generator (Admin only)
   const autoSchedule = (memberId, locationId, pattern = ['P', 'S', 'M', 'L', 'L']) => {
+    if (currentUser?.role === 'staf') {
+      sendWebNotification('Akses Terbatas', 'Hanya Koordinator / Admin yang dapat menerapkan rotasi otomatis.');
+      return;
+    }
     const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
     const newDaySchedule = {};
     for (let day = 1; day <= daysInMonth; day++) {
@@ -222,7 +230,27 @@ export const AppProvider = ({ children }) => {
     setLocations(prev => prev.filter(l => l.id !== id));
   };
 
-  // Login & Logout (Sekali Login Tetap Login)
+  // Login & Logout dengan Sistem Password & PIN (Sekali Login Tetap Login)
+  const loginWithPassword = (memberId, password) => {
+    const member = members.find(m => m.id === memberId);
+    if (!member) {
+      return { success: false, message: 'Petugas tidak ditemukan dalam daftar.' };
+    }
+    const inputClean = (password || '').trim();
+    const validPass = Boolean(member.password && member.password === inputClean);
+    const validPin = Boolean(member.pin && member.pin === inputClean);
+    const fallbackPass = member.role === 'admin' ? 'admin123' : '123456';
+    const fallbackPin = '1234';
+
+    if (validPass || validPin || inputClean === fallbackPass || inputClean === fallbackPin) {
+      setCurrentUser(member);
+      localStorage.setItem('kp_current_user', JSON.stringify(member));
+      sendWebNotification(`Halo, ${member.nama}! 👋`, `Login berhasil sebagai ${member.role === 'admin' ? 'Koordinator/Admin' : 'Petugas Staf'}.`);
+      return { success: true, member };
+    }
+    return { success: false, message: 'Password atau PIN salah. Silakan coba lagi.' };
+  };
+
   const login = (member) => {
     setCurrentUser(member);
     localStorage.setItem('kp_current_user', JSON.stringify(member));
@@ -230,9 +258,9 @@ export const AppProvider = ({ children }) => {
   };
 
   const logout = () => {
-    // We can clear or reset to default
     localStorage.removeItem('kp_current_user');
     setCurrentUser(null);
+    sendWebNotification('Keluar Sesi', 'Anda telah keluar. Silakan login kembali.');
   };
 
   // Supabase Sync
@@ -292,6 +320,7 @@ export const AppProvider = ({ children }) => {
     <AppContext.Provider value={{
       currentUser,
       login,
+      loginWithPassword,
       logout,
       activeTab,
       setActiveTab,
