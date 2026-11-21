@@ -16,7 +16,9 @@ export const SettingsView = ({ onOpenLogin }) => {
     sendWebNotification,
     syncSupabase,
     isSyncing,
-    syncStatus
+    syncStatus,
+    notificationPermission,
+    requestNotificationPermission
   } = useApp();
 
   // Supabase Local Form State
@@ -57,10 +59,14 @@ export const SettingsView = ({ onOpenLogin }) => {
   };
 
   // Test Mobile Push Notification
-  const handleTestNotification = () => {
+  const handleTestNotification = async () => {
+    if (notificationPermission !== 'granted') {
+      const granted = await requestNotificationPermission();
+      if (!granted) return;
+    }
     sendWebNotification(
       '🔔 Pengingat Piket Dinas - Kita Piket',
-      'Halo! Shift Anda akan dimulai dalam 1 jam di RSJ. Harap segera bersiap.'
+      'Halo! Shift Anda akan dimulai dalam 1 jam di Pos Pelayanan. Harap segera bersiap.'
     );
   };
 
@@ -279,26 +285,53 @@ export const SettingsView = ({ onOpenLogin }) => {
       </div>
 
       {/* 4. Pengingat & Notifikasi HP */}
-      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-3">
-        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-          <Bell className="w-4 h-4 text-amber-600" />
-          Pengingat Piket & Notifikasi HP
-        </h3>
-        <p className="text-xs text-slate-600">
-          Aplikasi akan otomatis memunculkan notifikasi pengingat sebelum jadwal dinas dimulai.
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="w-5 h-5 text-amber-600" />
+            <h3 className="text-sm font-bold text-slate-900">Pengingat Piket & Notifikasi HP (Status Bar)</h3>
+          </div>
+          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+            notificationPermission === 'granted'
+              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+              : 'bg-amber-100 text-amber-800 border-amber-300 animate-pulse'
+          }`}>
+            {notificationPermission === 'granted' ? 'Status: Aktif' : 'Status: Belum Aktif'}
+          </span>
+        </div>
+
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Notifikasi pengingat akan muncul langsung di bilah status bagian atas layar HP Anda sebelum jam dinas dimulai.
         </p>
 
-        <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200 flex items-center justify-between gap-3">
+        <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-bold text-amber-900">Tes Kirim Notifikasi ke HP Anda</p>
-            <p className="text-[11px] text-amber-700">Pastikan izin notifikasi di browser Anda sudah aktif.</p>
+            <p className="text-xs font-bold text-amber-950">
+              {notificationPermission === 'granted' ? 'Notifikasi Pengingat Sudah Diizinkan' : 'Aktifkan Izin Notifikasi HP'}
+            </p>
+            <p className="text-[11px] text-amber-800 mt-0.5">
+              {notificationPermission === 'granted'
+                ? 'HP Anda siap menerima pengingat dinas di status bar atas.'
+                : 'Ketuk tombol di samping untuk memunculkan izin notifikasi dari browser Chrome.'}
+            </p>
           </div>
-          <button
-            onClick={handleTestNotification}
-            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shrink-0 shadow-sm"
-          >
-            Kirim Tes Notif
-          </button>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {notificationPermission !== 'granted' && (
+              <button
+                onClick={requestNotificationPermission}
+                className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-sm"
+              >
+                Aktifkan Izin
+              </button>
+            )}
+            <button
+              onClick={handleTestNotification}
+              className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-white hover:bg-slate-50 border border-amber-300 text-amber-900 text-xs font-bold transition-all shadow-xs"
+            >
+              Tes Notifikasi
+            </button>
+          </div>
         </div>
       </div>
 

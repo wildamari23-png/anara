@@ -110,12 +110,41 @@ export const AppProvider = ({ children }) => {
   useEffect(() => { localStorage.setItem('kp_swap_requests', JSON.stringify(swapRequests)); }, [swapRequests]);
   useEffect(() => { localStorage.setItem('kp_notifications', JSON.stringify(notifications)); }, [notifications]);
 
-  // Request browser notification permission
-  useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+  // Notification Permission State
+  const [notificationPermission, setNotificationPermission] = useState(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      return Notification.permission;
     }
-  }, []);
+    return 'unsupported';
+  });
+
+  // Request browser notification permission (Triggered by user button click)
+  const requestNotificationPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      alert('Browser Anda belum mendukung fitur Notifikasi Web.');
+      return false;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+
+      if (permission === 'granted') {
+        sendWebNotification(
+          'Notifikasi HP Aktif! 🔔',
+          'Pengingat jadwal dinas Kita Piket kini akan tampil di bagian atas layar HP Anda.'
+        );
+        return true;
+      } else if (permission === 'denied') {
+        alert('Izin notifikasi diblokir. Silakan klik ikon gembok di bilah alamat browser, lalu ubah izin Notifikasi menjadi "Izinkan".');
+        return false;
+      }
+    } catch (e) {
+      console.warn('Error requesting permission:', e);
+      return false;
+    }
+    return false;
+  };
 
   // Send Push / Web Notification
   const sendWebNotification = (title, body) => {
@@ -129,21 +158,27 @@ export const AppProvider = ({ children }) => {
     };
     setNotifications(prev => [newNotif, ...prev]);
 
-    if ('Notification' in window && Notification.permission === 'granted') {
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.ready.then(reg => {
-          reg.showNotification(title, {
-            body,
-            icon: './icon-192.png',
-            vibrate: [200, 100, 200],
-            badge: './icon-192.png'
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      const options = {
+        body,
+        icon: './icon-192.png',
+        badge: './icon-192.png',
+        vibrate: [200, 100, 200, 100, 200],
+        tag: 'kp-' + Date.now(),
+        renotify: true,
+        data: { url: './' }
+      };
+
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.ready
+          .then(reg => {
+            reg.showNotification(title, options);
+          })
+          .catch(() => {
+            try { new Notification(title, options); } catch (e) {}
           });
-        });
       } else {
-        new Notification(title, {
-          body,
-          icon: './icon-192.png'
-        });
+        try { new Notification(title, options); } catch (e) {}
       }
     }
   };
@@ -184,12 +219,72 @@ export const AppProvider = ({ children }) => {
     sendWebNotification('Jadwal Otomatis Diterapkan', `Pola rotasi piket berhasil disimpan untuk 1 bulan.`);
   };
 
-  // Check-In Attendance
-  const checkIn = (locationId, shiftCode, note = '') => {
-    if (!currentUser) return;
-    const now = new Date();
-    const loc = locations.find(l => l.id === locationId);
+  // Get Shift Information & Operational Hours
+  const getShiftTimeInfo = (shiftCode) => {
+    switch (shiftCode) {
+      case 'P':
+        return { name: 'Pagi', time: '07:00 - 14:00', startHour: 6, startMin: 30, endHour: 14, endMin: 0 };
+      case 'S':
+        return { name: 'Siang', time: '14:00 - 21:00', startHour: 13, startMin: 30, endHour: 21, endMin: 0 };
+      case 'M':
+        return { name: 'Malam', time: '21:00 - 07:00', startHour: 20, startMin: 30, endHour: 7, endMin: 0, crossesMidnight: true };
+      case 'P/S':
+        return { name: 'Pagi-Siang', time: '07:00 - 21:00', startHour: 6, startMin: 30, endHour: 21, endMin: 0 };
+      case 'S/M':
+        return { name: 'Siang-Malam', time: '14:00 - 07:00', startHour: 13, startMin: 30, endHour: 7, endMin: 0, crossesMidnight: true };
+      case 'PSM':
+        return { name: 'Pagi-Siang-Malam (24 Jam)', time: '07:00 - 07:00', startHour: 0, startMin: 0, endHour: 24, endMin: 0, crossesMidnight: true };
+      default:
+        return { name: 'Libur', time: 'Hari Lepas', startHour: -1, endHour: -1 };
+    }
+  };
 
+  // Check if current time falls within allowable check-in window of a given shift
+  const isShiftWindowActive = (shiftCode) => {
+    if (!shiftCode || shiftCode === 'L') return false;
+    if (shiftCode === 'PSM') return true;
+
+    const info = getShiftTimeInfo(shiftCode);
+    if (info.startHour === -1) return false;
+
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    const startMins = info.startHour * 60 + (info.startMin || 0);
+    const endMins = info.endHour * 60 + (info.endMin || 0);
+
+    if (info.crossesMidnight) {
+      return currentMins >= startMins || currentMins <= endMins;
+    } else {
+      return currentMins >= startMins && currentMins <= endMins;
+    }
+  };
+
+  // Check-In Attendance with Strict Shift Validation
+  const checkIn = (locationId, shiftCode, note = '') => {
+    if (!currentUser) return { success: false, message: 'Silakan login terlebih dahulu.' };
+    const now = new Date();
+    const currentDay = now.getDate();
+
+    // Validasi ketat untuk Staf:
+    if (currentUser.role === 'staf') {
+      const key = `${currentUser.id}_${locationId}`;
+      const scheduledShift = schedules[key]?.[currentDay] || 'L';
+
+      if (scheduledShift === 'L' || !scheduledShift) {
+        const msg = 'Gagal Check-In: Anda tidak memiliki jadwal piket dinas di lokasi ini hari ini (Hari Lepas / Libur).';
+        sendWebNotification('Check-In Ditolak ⚠️', msg);
+        return { success: false, message: msg };
+      }
+
+      if (!isShiftWindowActive(scheduledShift)) {
+        const info = getShiftTimeInfo(scheduledShift);
+        const msg = `Gagal Check-In: Bukan jam dinas Anda! Jadwal Anda hari ini adalah Shift ${scheduledShift} (${info.name}: ${info.time}). Konfirmasi kehadiran hanya dibuka saat jam shift dinas Anda berlangsung.`;
+        sendWebNotification('Bukan Jam Dinas ⚠️', msg);
+        return { success: false, message: msg };
+      }
+    }
+
+    const loc = locations.find(l => l.id === locationId);
     const newRecord = {
       id: 'att-' + Date.now(),
       memberId: currentUser.id,
@@ -213,6 +308,7 @@ export const AppProvider = ({ children }) => {
     });
 
     sendWebNotification('Check-In Berhasil! ✅', `Tercatat hadir piket di ${loc?.nama || 'Pos'} jam ${newRecord.time}.`);
+    return { success: true, message: `Check-in berhasil di ${loc?.nama || 'Pos'}!` };
   };
 
   // Locations management
@@ -345,6 +441,10 @@ export const AppProvider = ({ children }) => {
       unreadCount,
       markAllNotificationsRead,
       sendWebNotification,
+      notificationPermission,
+      requestNotificationPermission,
+      getShiftTimeInfo,
+      isShiftWindowActive,
       syncSupabase,
       isSyncing,
       syncStatus

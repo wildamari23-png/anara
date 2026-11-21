@@ -3,7 +3,15 @@ import { useApp } from '../context/AppContext';
 import { Bell, Cloud, User, RefreshCw, Calendar, ShieldCheck, LogOut } from 'lucide-react';
 
 export const Navbar = ({ onOpenNotif, onOpenLogin, onOpenGitHub }) => {
-  const { currentUser, logout, unreadCount, isSyncing, syncSupabase } = useApp();
+  const {
+    currentUser,
+    logout,
+    unreadCount,
+    isSyncing,
+    syncSupabase,
+    notificationPermission,
+    requestNotificationPermission
+  } = useApp();
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -61,19 +69,31 @@ export const Navbar = ({ onOpenNotif, onOpenLogin, onOpenGitHub }) => {
             <span className="hidden md:inline">Supabase</span>
           </button>
 
-          {/* Notification Bell */}
-          <button
-            onClick={onOpenNotif}
-            className="relative p-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 transition-all"
-            aria-label="Pemberitahuan"
-          >
-            <Bell className="w-4 h-4" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center animate-pulse">
-                {unreadCount}
-              </span>
-            )}
-          </button>
+          {/* Tombol Aktifkan Notifikasi HP (Jika belum diizinkan) */}
+          {notificationPermission !== 'granted' ? (
+            <button
+              onClick={requestNotificationPermission}
+              className="px-2.5 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 transition-all flex items-center gap-1.5 text-xs font-bold shadow-xs animate-pulse"
+              title="Klik untuk mengaktifkan notifikasi di bilah atas HP"
+            >
+              <Bell className="w-3.5 h-3.5 text-amber-700" />
+              <span className="hidden sm:inline">Aktifkan Notif</span>
+            </button>
+          ) : (
+            <button
+              onClick={onOpenNotif}
+              className="relative p-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 transition-all"
+              aria-label="Pemberitahuan"
+              title="Notifikasi HP Aktif • Buka Riwayat"
+            >
+              <Bell className="w-4 h-4 text-emerald-600" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[10px] font-bold flex items-center justify-center animate-pulse">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* User Profile Pill (Tetap Login Status) */}
           <button

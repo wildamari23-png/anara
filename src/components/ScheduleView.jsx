@@ -19,8 +19,11 @@ import {
   ShieldCheck,
   Info,
   CalendarCheck,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Bell,
+  AlertCircle
 } from 'lucide-react';
+import { ShiftDetailModal } from './ShiftDetailModal';
 
 const MONTH_NAMES = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -44,15 +47,21 @@ export const ScheduleView = () => {
     updateSchedule,
     autoSchedule,
     setActiveTab,
-    sendWebNotification
+    sendWebNotification,
+    notificationPermission,
+    requestNotificationPermission
   } = useApp();
 
   const isStaff = currentUser?.role === 'staf';
 
   // Mode Tampilan untuk Admin: 'daily', 'calendar', 'member', 'table'
-  // Mode Tampilan untuk Staf: 'my_calendar', 'my_agenda'
-  const [viewMode, setViewMode] = useState(isStaff ? 'my_calendar' : 'daily');
-  const [selectedStaffSubView, setSelectedStaffSubView] = useState('calendar'); // 'calendar' or 'agenda'
+  const [viewMode, setViewMode] = useState('daily');
+
+  // Mode Tampilan untuk Staf: DEFAULT 'agenda' (sesuai instruksi pengguna)
+  const [selectedStaffSubView, setSelectedStaffSubView] = useState('agenda');
+
+  // State untuk Modal Detail Informatif Piket
+  const [detailModalData, setDetailModalData] = useState(null);
 
   // Selected Day for Daily Input (Default hari ini)
   const now = new Date();
@@ -176,7 +185,6 @@ export const ScheduleView = () => {
   // TAMPILAN KHUSUS STAF: HANYA MENAMPILKAN JADWAL DIRI SENDIRI (READ-ONLY)
   // =========================================================================
   if (isStaff) {
-    // Hitung ringkasan statistik jadwal staf bulan ini
     let countP = 0, countS = 0, countM = 0, countL = 0;
     daysArray.forEach(day => {
       let isWorking = false;
@@ -194,6 +202,32 @@ export const ScheduleView = () => {
 
     return (
       <div className="space-y-5 pb-28 animate-fade-in">
+        {/* Banner Aktifkan Notifikasi HP (Jika belum diizinkan) */}
+        {notificationPermission !== 'granted' && (
+          <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white rounded-3xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-white/20 backdrop-blur-md text-white shrink-0">
+                <Bell className="w-5 h-5 animate-bounce" />
+              </div>
+              <div>
+                <h4 className="text-sm font-extrabold leading-tight">Aktifkan Notifikasi Pengingat di HP Anda</h4>
+                <p className="text-xs text-amber-100 mt-0.5">
+                  Dapatkan pengingat dinas otomatis di bilah status atas HP sebelum shift Anda dimulai.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                onClick={requestNotificationPermission}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-white text-amber-800 hover:bg-amber-50 font-black text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+              >
+                <Bell className="w-4 h-4" />
+                <span>Aktifkan Notifikasi HP</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Banner Hak Akses Staf */}
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-3">
@@ -211,7 +245,7 @@ export const ScheduleView = () => {
               </div>
               <p className="text-xs text-slate-600 flex items-center gap-1.5 mt-0.5">
                 <Lock className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                <span>Mode Baca (Read-Only) • Lokasi Tugas: <strong>{staffLocations.map(l => l.nama).join(', ')}</strong></span>
+                <span>Mode Baca (Read-Only) • Pos: <strong>{staffLocations.map(l => l.nama).join(', ')}</strong></span>
               </p>
             </div>
           </div>
@@ -262,22 +296,11 @@ export const ScheduleView = () => {
             </button>
           </div>
 
-          {/* Sub View Toggle: Kalender Kotak vs Agenda List */}
-          <div className="flex items-center p-1 bg-slate-100 rounded-2xl">
-            <button
-              onClick={() => setSelectedStaffSubView('calendar')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                selectedStaffSubView === 'calendar'
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Kalender Jadwal</span>
-            </button>
+          {/* Sub View Toggle: DEFAULT AGENDA HARIAN */}
+          <div className="flex items-center p-1 bg-slate-100 rounded-2xl w-full sm:w-auto">
             <button
               onClick={() => setSelectedStaffSubView('agenda')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
                 selectedStaffSubView === 'agenda'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
@@ -285,6 +308,17 @@ export const ScheduleView = () => {
             >
               <CalendarDays className="w-3.5 h-3.5" />
               <span>Agenda Harian</span>
+            </button>
+            <button
+              onClick={() => setSelectedStaffSubView('calendar')}
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                selectedStaffSubView === 'calendar'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span>Kalender Jadwal</span>
             </button>
           </div>
         </div>
@@ -309,117 +343,18 @@ export const ScheduleView = () => {
           </div>
         </div>
 
-        {/* SUB VIEW 1: KALENDER KOTAK KHUSUS STAF */}
-        {selectedStaffSubView === 'calendar' && (
-          <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-blue-600" />
-                Kalender Piket Anda ({MONTH_NAMES[selectedMonth - 1]} {selectedYear})
-              </h4>
-              <span className="text-[11px] text-slate-500 font-medium italic">
-                *Hanya menampilkan jadwal pribadi Anda
-              </span>
-            </div>
-
-            {/* Grid 7 Kolom */}
-            <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-              {/* Header Nama Hari */}
-              {DAY_NAMES_SHORT.map((name, idx) => (
-                <div
-                  key={name}
-                  className={`py-2 text-center text-xs font-bold rounded-xl ${
-                    idx === 0 ? 'bg-rose-50 text-rose-600' : idx === 5 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  {name}
-                </div>
-              ))}
-
-              {/* Tanggal kosong awal bulan */}
-              {Array.from({ length: new Date(selectedYear, selectedMonth - 1, 1).getDay() }).map((_, i) => (
-                <div key={`empty-${i}`} className="min-h-16 sm:min-h-20 bg-slate-50/50 rounded-2xl border border-dashed border-slate-100" />
-              ))}
-
-              {/* Kotak Tanggal 1 s/d Hari Terakhir */}
-              {daysArray.map((day) => {
-                const dayInfo = getDayInfo(day);
-                const isToday = now.getDate() === day && now.getMonth() + 1 === selectedMonth && now.getFullYear() === selectedYear;
-
-                // Cari shift staf di lokasi mereka hari ini
-                const dayShifts = [];
-                staffLocations.forEach(loc => {
-                  const key = `${currentUser.id}_${loc.id}`;
-                  const shift = schedules[key]?.[day] || 'L';
-                  dayShifts.push({ loc, shift });
-                });
-
-                const primaryShift = dayShifts[0]?.shift || 'L';
-                const isOff = dayShifts.every(s => s.shift === 'L');
-
-                return (
-                  <div
-                    key={day}
-                    className={`min-h-20 sm:min-h-24 p-2 rounded-2xl border flex flex-col justify-between transition-all ${
-                      isToday
-                        ? 'border-blue-500 bg-blue-50/50 ring-2 ring-blue-400/30 shadow-xs'
-                        : isOff
-                        ? 'border-slate-200/80 bg-slate-50/60'
-                        : 'border-slate-200 bg-white hover:border-slate-300 shadow-xs'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className={`text-xs font-black ${
-                        isToday ? 'text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-md' : dayInfo.isSunday ? 'text-rose-600' : 'text-slate-800'
-                      }`}>
-                        {day}
-                      </span>
-                      {isToday && (
-                        <span className="text-[9px] font-bold text-blue-700 uppercase bg-blue-100 px-1 rounded-sm">
-                          Hari ini
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="space-y-1 mt-1">
-                      {dayShifts.map(({ loc, shift }) => {
-                        const shiftObj = shifts.find(s => s.kode === shift);
-                        const isLibur = shift === 'L';
-                        return (
-                          <div
-                            key={loc.id}
-                            className={`px-1.5 py-1 rounded-lg text-center ${
-                              isLibur
-                                ? 'bg-slate-100 text-slate-500 text-[10px]'
-                                : shift === 'P'
-                                ? 'bg-emerald-100 text-emerald-800 font-bold border border-emerald-200'
-                                : shift === 'S'
-                                ? 'bg-sky-100 text-sky-800 font-bold border border-sky-200'
-                                : shift === 'M'
-                                ? 'bg-indigo-100 text-indigo-800 font-bold border border-indigo-200'
-                                : 'bg-amber-100 text-amber-800 font-bold border border-amber-200'
-                            }`}
-                          >
-                            <span className="text-[11px] font-black">{shift}</span>
-                            <span className="text-[9px] block text-slate-600 truncate">{loc.nama}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* SUB VIEW 2: AGENDA HARIAN KHUSUS STAF */}
+        {/* SUB VIEW 1: AGENDA HARIAN (DEFAULT - SANGAT RAPI DI HP) */}
         {selectedStaffSubView === 'agenda' && (
           <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm space-y-3">
-            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-blue-600" />
-              Daftar Agenda Dinas Anda ({MONTH_NAMES[selectedMonth - 1]} {selectedYear})
-            </h4>
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-blue-600" />
+                Daftar Agenda Dinas Anda ({MONTH_NAMES[selectedMonth - 1]} {selectedYear})
+              </h4>
+              <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                💡 Ketuk untuk melihat detail shift & rekan piket
+              </span>
+            </div>
 
             <div className="space-y-2">
               {daysArray.map((day) => {
@@ -432,27 +367,34 @@ export const ScheduleView = () => {
                 });
 
                 const isOff = dayShifts.every(s => s.shift === 'L');
+                const primaryItem = dayShifts[0];
 
                 return (
                   <div
                     key={day}
-                    className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all ${
+                    onClick={() => setDetailModalData({
+                      day,
+                      member: currentUser,
+                      location: primaryItem?.loc,
+                      shiftCode: primaryItem?.shift || 'L'
+                    })}
+                    className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] ${
                       isToday
-                        ? 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-400/20'
+                        ? 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-400/20 shadow-xs'
                         : isOff
                         ? 'border-slate-100 bg-slate-50/40 text-slate-400'
                         : 'border-slate-200 bg-white hover:bg-slate-50/80 shadow-xs'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`w-11 h-11 rounded-xl flex flex-col items-center justify-center font-bold text-xs ${
+                      <div className={`w-11 h-11 rounded-xl flex flex-col items-center justify-center font-bold text-xs shrink-0 ${
                         isToday ? 'bg-blue-600 text-white shadow-sm' : isOff ? 'bg-slate-100 text-slate-500' : 'bg-slate-100 text-slate-800'
                       }`}>
                         <span className="text-[10px] uppercase font-semibold leading-none">{dayInfo.shortName}</span>
                         <span className="text-sm font-black leading-tight mt-0.5">{day}</span>
                       </div>
 
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           <p className={`text-xs font-bold ${isToday ? 'text-blue-950 font-black' : 'text-slate-800'}`}>
                             {dayInfo.fullName}, {day} {MONTH_NAMES[selectedMonth - 1]}
@@ -464,13 +406,13 @@ export const ScheduleView = () => {
                           )}
                         </div>
 
-                        <p className="text-[11px] text-slate-500 mt-0.5">
+                        <p className="text-[11px] text-slate-500 mt-0.5 truncate">
                           {isOff ? 'Hari Lepas / Libur Piket' : staffLocations.map(l => l.nama).join(' & ')}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {dayShifts.map(({ loc, shift }) => {
                         const shiftObj = shifts.find(s => s.kode === shift);
                         const isLibur = shift === 'L';
@@ -490,7 +432,7 @@ export const ScheduleView = () => {
                             }`}
                           >
                             <span className="text-xs font-black">{shift}</span>
-                            <span className="text-[11px] font-semibold">({shiftObj?.nama || 'Libur'})</span>
+                            <span className="text-[11px] font-semibold hidden sm:inline">({shiftObj?.nama || 'Libur'})</span>
                           </div>
                         );
                       })}
@@ -501,6 +443,126 @@ export const ScheduleView = () => {
             </div>
           </div>
         )}
+
+        {/* SUB VIEW 2: KALENDER KOTAK KHUSUS STAF (DIPERBAIKI UNTUK LAYAR HP - TIDAK MENUMPUK) */}
+        {selectedStaffSubView === 'calendar' && (
+          <div className="bg-white rounded-3xl p-3 sm:p-5 border border-slate-200/90 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <LayoutGrid className="w-4 h-4 text-blue-600" />
+                Kalender Piket Anda ({MONTH_NAMES[selectedMonth - 1]} {selectedYear})
+              </h4>
+              <span className="text-[11px] text-slate-500 font-medium">
+                💡 Ketuk tanggal untuk melihat detail lengkap & rekan piket
+              </span>
+            </div>
+
+            {/* Grid 7 Kolom Responsif */}
+            <div className="grid grid-cols-7 gap-1 sm:gap-2">
+              {DAY_NAMES_SHORT.map((name, idx) => (
+                <div
+                  key={name}
+                  className={`py-1.5 text-center text-[11px] sm:text-xs font-bold rounded-xl ${
+                    idx === 0 ? 'bg-rose-50 text-rose-600' : idx === 5 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {name}
+                </div>
+              ))}
+
+              {/* Tanggal kosong awal bulan */}
+              {Array.from({ length: new Date(selectedYear, selectedMonth - 1, 1).getDay() }).map((_, i) => (
+                <div key={`empty-${i}`} className="min-h-14 sm:min-h-20 bg-slate-50/50 rounded-2xl border border-dashed border-slate-100" />
+              ))}
+
+              {/* Kotak Tanggal: Compact & Bebas Teks Menumpuk di HP */}
+              {daysArray.map((day) => {
+                const dayInfo = getDayInfo(day);
+                const isToday = now.getDate() === day && now.getMonth() + 1 === selectedMonth && now.getFullYear() === selectedYear;
+
+                const dayShifts = [];
+                staffLocations.forEach(loc => {
+                  const key = `${currentUser.id}_${loc.id}`;
+                  const shift = schedules[key]?.[day] || 'L';
+                  dayShifts.push({ loc, shift });
+                });
+
+                const primaryShift = dayShifts[0]?.shift || 'L';
+                const isOff = dayShifts.every(s => s.shift === 'L');
+
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => setDetailModalData({
+                      day,
+                      member: currentUser,
+                      location: dayShifts[0]?.loc,
+                      shiftCode: primaryShift
+                    })}
+                    className={`min-h-14 sm:min-h-20 p-1 sm:p-2 rounded-2xl border flex flex-col justify-between text-left transition-all hover:scale-102 active:scale-98 cursor-pointer ${
+                      isToday
+                        ? 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-400/30 shadow-xs'
+                        : isOff
+                        ? 'border-slate-200/80 bg-slate-50/60'
+                        : 'border-slate-200 bg-white hover:border-blue-300 shadow-xs'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className={`text-[10px] sm:text-xs font-black ${
+                        isToday ? 'text-blue-700 bg-blue-100 px-1 rounded' : dayInfo.isSunday ? 'text-rose-600' : 'text-slate-800'
+                      }`}>
+                        {day}
+                      </span>
+                      {isToday && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-600 sm:hidden" />
+                      )}
+                    </div>
+
+                    {/* Badge Shift: Sangat Bersih di HP, Tanpa Teks Menumpuk */}
+                    <div className="flex flex-col gap-1 mt-1 w-full">
+                      {dayShifts.map(({ loc, shift }) => {
+                        const isLibur = shift === 'L';
+                        return (
+                          <div
+                            key={loc.id}
+                            className={`w-full py-0.5 sm:py-1 px-1 rounded-lg text-center flex items-center justify-center gap-1 ${
+                              isLibur
+                                ? 'bg-slate-100 text-slate-400 text-[9px]'
+                                : shift === 'P'
+                                ? 'bg-emerald-100 text-emerald-800 font-extrabold border border-emerald-300'
+                                : shift === 'S'
+                                ? 'bg-sky-100 text-sky-800 font-extrabold border border-sky-300'
+                                : shift === 'M'
+                                ? 'bg-indigo-100 text-indigo-800 font-extrabold border border-indigo-300'
+                                : 'bg-amber-100 text-amber-800 font-extrabold border border-amber-300'
+                            }`}
+                          >
+                            <span className="text-[11px] sm:text-xs font-black leading-none">{shift}</span>
+                            <span className="text-[9px] font-bold hidden sm:inline truncate">
+                              {loc.kode || loc.nama}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Modal Detail Informatif Piket */}
+        <ShiftDetailModal
+          isOpen={Boolean(detailModalData)}
+          onClose={() => setDetailModalData(null)}
+          day={detailModalData?.day}
+          member={detailModalData?.member}
+          location={detailModalData?.location}
+          shiftCode={detailModalData?.shiftCode}
+          onOpenSwap={() => setActiveTab('monitoring')}
+        />
       </div>
     );
   }
@@ -510,9 +572,34 @@ export const ScheduleView = () => {
   // =========================================================================
   return (
     <div className="space-y-5 pb-28 animate-fade-in">
-      {/* 1. Month Bar & Mode Switcher (Cerah, Bersih, Menarik) */}
+      {/* Banner Aktifkan Notifikasi HP (Jika belum diizinkan) */}
+      {notificationPermission !== 'granted' && (
+        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white rounded-3xl p-4 sm:p-5 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-white/20 backdrop-blur-md text-white shrink-0">
+              <Bell className="w-5 h-5 animate-bounce" />
+            </div>
+            <div>
+              <h4 className="text-sm font-extrabold leading-tight">Aktifkan Notifikasi Pengingat di HP Anda</h4>
+              <p className="text-xs text-amber-100 mt-0.5">
+                Dapatkan notifikasi pengingat otomatis di bagian atas HP sebelum shift tugas dinas dimulai.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button
+              onClick={requestNotificationPermission}
+              className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-white text-amber-800 hover:bg-amber-50 font-black text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+            >
+              <Bell className="w-4 h-4" />
+              <span>Aktifkan Notifikasi HP</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 1. Month Bar & Mode Switcher */}
       <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Month Selector */}
         <div className="flex items-center gap-2">
           <button
             onClick={handlePrevMonth}
@@ -539,7 +626,7 @@ export const ScheduleView = () => {
           </button>
         </div>
 
-        {/* View Mode Tabs (Canggih & Fleksibel) */}
+        {/* View Mode Tabs */}
         <div className="flex items-center p-1 bg-slate-100 rounded-2xl w-full sm:w-auto overflow-x-auto">
           <button
             onClick={() => setViewMode('daily')}
@@ -600,7 +687,7 @@ export const ScheduleView = () => {
         </button>
       </div>
 
-      {/* MODE 1: INPUT CEPAT HARIAN (TIDAK PERLU GESER KESAMPING - 1 TAP ENTRI) */}
+      {/* MODE 1: INPUT CEPAT HARIAN */}
       {viewMode === 'daily' && (
         <div className="space-y-4">
           <div className="bg-white rounded-3xl p-3 border border-slate-200/90 shadow-sm">
@@ -672,7 +759,15 @@ export const ScheduleView = () => {
                             key={mem.id}
                             className="p-3 rounded-2xl border border-slate-200/80 bg-slate-50/70 hover:bg-white hover:border-slate-300 transition-all flex items-center justify-between gap-3"
                           >
-                            <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              onClick={() => setDetailModalData({
+                                day: selectedDay,
+                                member: mem,
+                                location: loc,
+                                shiftCode: currentShift
+                              })}
+                              className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-80"
+                            >
                               <span className="text-xl">{mem.avatar}</span>
                               <div className="min-w-0">
                                 <p className="text-xs font-bold text-slate-900 truncate">
@@ -723,7 +818,7 @@ export const ScheduleView = () => {
         </div>
       )}
 
-      {/* MODE 2: KOTAK KALENDER 7 KOLOM */}
+      {/* MODE 2: KOTAK KALENDER */}
       {viewMode === 'calendar' && (
         <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
@@ -841,7 +936,7 @@ export const ScheduleView = () => {
         </div>
       )}
 
-      {/* MODE 3: PER PETUGAS (PAINTER MODE) */}
+      {/* MODE 3: PER PETUGAS */}
       {viewMode === 'member' && (
         <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
@@ -888,7 +983,6 @@ export const ScheduleView = () => {
             })}
           </div>
 
-          {/* Grid Tanggal untuk Petugas Terpilih */}
           {(() => {
             const memberObj = members.find(m => m.id === selectedMemberId);
             const assignedLocs = locations.filter(loc => {
@@ -951,7 +1045,7 @@ export const ScheduleView = () => {
         </div>
       )}
 
-      {/* MODE 4: TABEL MATRIKS (REKAP KESELURUHAN) */}
+      {/* MODE 4: TABEL MATRIKS */}
       {viewMode === 'table' && (
         <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
@@ -1011,6 +1105,17 @@ export const ScheduleView = () => {
           </div>
         </div>
       )}
+
+      {/* Modal Detail Informatif Piket (Admin) */}
+      <ShiftDetailModal
+        isOpen={Boolean(detailModalData)}
+        onClose={() => setDetailModalData(null)}
+        day={detailModalData?.day}
+        member={detailModalData?.member}
+        location={detailModalData?.location}
+        shiftCode={detailModalData?.shiftCode}
+        onOpenSwap={() => setActiveTab('monitoring')}
+      />
     </div>
   );
 };
