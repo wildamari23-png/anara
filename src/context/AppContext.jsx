@@ -315,15 +315,64 @@ export const AppProvider = ({ children }) => {
   const addLocation = (loc) => {
     const newLoc = { ...loc, id: 'loc-' + Date.now(), isActive: true };
     setLocations(prev => [...prev, newLoc]);
-    sendWebNotification('Lokasi Ditambahkan', `Lokasi "${newLoc.nama}" berhasil disimpan.`);
+    sendWebNotification('Lokasi Ditambahkan 📍', `Lokasi "${newLoc.nama}" berhasil disimpan.`);
+    return newLoc;
   };
 
   const updateLocation = (id, updated) => {
     setLocations(prev => prev.map(l => l.id === id ? { ...l, ...updated } : l));
+    sendWebNotification('Lokasi Diperbarui 📍', `Data pos "${updated.nama || 'Piket'}" berhasil diperbarui.`);
   };
 
   const deleteLocation = (id) => {
+    const loc = locations.find(l => l.id === id);
     setLocations(prev => prev.filter(l => l.id !== id));
+    sendWebNotification('Lokasi Dihapus 🗑️', `Pos "${loc?.nama || 'Piket'}" berhasil dihapus.`);
+  };
+
+  // Reassign Member Location with History Keeping or Resetting Option
+  const reassignMemberLocation = (memberId, newLocationIds, resetScheduleOption = 'keep') => {
+    const member = members.find(m => m.id === memberId);
+    if (!member) return { success: false, message: 'Petugas tidak ditemukan.' };
+
+    const oldLocationIds = member.assignedLocations || [];
+    const removedLocations = oldLocationIds.filter(id => !newLocationIds.includes(id));
+    const addedLocations = newLocationIds.filter(id => !oldLocationIds.includes(id));
+
+    // Handle Schedules based on user choice (Tetap vs Reset)
+    setSchedules(prev => {
+      const nextSchedules = { ...prev };
+
+      if (resetScheduleOption === 'reset') {
+        // Hapus/reset jadwal lama pada pos yang ditinggalkan
+        removedLocations.forEach(locId => {
+          const key = `${memberId}_${locId}`;
+          delete nextSchedules[key];
+        });
+      }
+
+      // Pastikan jadwal untuk lokasi baru siap diakses
+      addedLocations.forEach(locId => {
+        const key = `${memberId}_${locId}`;
+        if (!nextSchedules[key]) {
+          nextSchedules[key] = {};
+        }
+      });
+
+      return nextSchedules;
+    });
+
+    // Update member assigned locations
+    setMembers(prev => prev.map(m => m.id === memberId ? { ...m, assignedLocations: newLocationIds } : m));
+
+    // Update current user session if it is the modified member
+    if (currentUser?.id === memberId) {
+      setCurrentUser(prev => prev ? { ...prev, assignedLocations: newLocationIds } : prev);
+    }
+
+    const modeText = resetScheduleOption === 'reset' ? 'Jadwal pos lama di-reset' : 'Riwayat piket lama tetap dipertahankan';
+    sendWebNotification('Penempatan Lokasi Diperbarui 📍', `Penempatan ${member.nama} berhasil diubah (${modeText}).`);
+    return { success: true, message: `Penempatan ${member.nama} sukses disimpan!` };
   };
 
   // Login & Logout dengan Sistem Password & PIN (Sekali Login Tetap Login)
@@ -428,6 +477,7 @@ export const AppProvider = ({ children }) => {
       addLocation,
       updateLocation,
       deleteLocation,
+      reassignMemberLocation,
       members,
       shifts,
       schedules,
