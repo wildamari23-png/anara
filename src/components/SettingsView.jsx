@@ -218,7 +218,7 @@ export const SettingsView = ({ onOpenLogin }) => {
               <div className="min-w-0">
                 <p className="text-xs font-bold text-slate-900 truncate">{s.nama}</p>
                 <p className="text-[11px] font-semibold text-emerald-700">
-                  {s.kode === 'P/M' ? '07:00-14:00 & 21:00-07:00' : `${s.jamMulai} - ${s.jamSelesai}`} WITA
+                  {s.kode === 'P/M' ? '07:00-14:00 & 21:00-07:00' : `${s.jamMulai} - ${s.jamSelesai}`} WIB
                 </p>
                 <p className="text-[10px] text-slate-500 truncate mt-0.5">{s.deskripsi}</p>
               </div>

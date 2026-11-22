@@ -178,7 +178,7 @@ export const ShiftDetailModal = ({ isOpen, onClose, day, member, location, shift
 
           <div className="flex items-center gap-2 text-xs font-semibold pt-2 border-t border-current/10">
             <Clock className="w-3.5 h-3.5" />
-            <span>Jam Operasional: <strong>{isOff ? 'Bebas Tugas' : `${shiftInfo.time} WITA`}</strong></span>
+            <span>Jam Operasional: <strong>{isOff ? 'Bebas Tugas' : `${shiftInfo.time} WIB`}</strong></span>
           </div>
         </div>
 

@@ -21,7 +21,10 @@ import {
   CalendarCheck,
   FileSpreadsheet,
   Bell,
-  AlertCircle
+  AlertCircle,
+  History,
+  ChevronDown,
+  UserCheck
 } from 'lucide-react';
 import { ShiftDetailModal } from './ShiftDetailModal';
 
@@ -54,11 +57,14 @@ export const ScheduleView = () => {
 
   const isStaff = currentUser?.role === 'staf';
 
-  // Mode Tampilan untuk Admin: 'daily', 'calendar', 'member', 'table'
+  // Mode Tampilan untuk Admin: 'daily', 'calendar', 'member', 'table', 'my_agenda'
   const [viewMode, setViewMode] = useState('daily');
 
-  // Mode Tampilan untuk Staf: DEFAULT 'agenda' (sesuai instruksi pengguna)
+  // Mode Tampilan untuk Staf & Agenda: DEFAULT 'agenda' (sesuai instruksi pengguna)
   const [selectedStaffSubView, setSelectedStaffSubView] = useState('agenda');
+
+  // Auto-hide tanggal shift yang sudah lewat (bisa dibuka lagi)
+  const [showPastDays, setShowPastDays] = useState(false);
 
   // State untuk Modal Detail Informatif Piket
   const [detailModalData, setDetailModalData] = useState(null);
@@ -107,6 +113,16 @@ export const ScheduleView = () => {
       isSunday: dayOfWeek === 0,
       isFriday: dayOfWeek === 5
     };
+  };
+
+  // Helper: Cek apakah tanggal sudah lewat (untuk auto-hide di agenda)
+  const isDayInPast = (day) => {
+    const isCurrentMonth = now.getMonth() + 1 === selectedMonth && now.getFullYear() === selectedYear;
+    if (isCurrentMonth) {
+      return day < now.getDate();
+    }
+    const itemDate = new Date(selectedYear, selectedMonth - 1, day, 23, 59, 59);
+    return itemDate < now;
   };
 
   // Helper: Get only members assigned to a specific location
@@ -363,8 +379,12 @@ export const ScheduleView = () => {
               </span>
             </div>
 
-            <div className="space-y-2">
-              {daysArray.map((day) => {
+            {/* Accordion Tombol Jadwal yang Sudah Lewat (Auto-Hide Default) */}
+            {(() => {
+              const pastDays = daysArray.filter(day => isDayInPast(day));
+              const upcomingDays = daysArray.filter(day => !isDayInPast(day));
+
+              const renderDayCard = (day, isPast = false) => {
                 const dayInfo = getDayInfo(day);
                 const isToday = now.getDate() === day && now.getMonth() + 1 === selectedMonth && now.getFullYear() === selectedYear;
 
@@ -390,12 +410,14 @@ export const ScheduleView = () => {
                         ? 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-400/20 shadow-xs'
                         : isOff
                         ? 'border-slate-100 bg-slate-50/40 text-slate-400'
+                        : isPast
+                        ? 'border-slate-200/60 bg-slate-50/50 text-slate-600'
                         : 'border-slate-200 bg-white hover:bg-slate-50/80 shadow-xs'
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-11 h-11 rounded-xl flex flex-col items-center justify-center font-bold text-xs shrink-0 ${
-                        isToday ? 'bg-blue-600 text-white shadow-sm' : isOff ? 'bg-slate-100 text-slate-500' : 'bg-slate-100 text-slate-800'
+                        isToday ? 'bg-blue-600 text-white shadow-sm' : isOff ? 'bg-slate-100 text-slate-500' : isPast ? 'bg-slate-100 text-slate-600' : 'bg-slate-100 text-slate-800'
                       }`}>
                         <span className="text-[10px] uppercase font-semibold leading-none">{dayInfo.shortName}</span>
                         <span className="text-sm font-black leading-tight mt-0.5">{day}</span>
@@ -403,12 +425,17 @@ export const ScheduleView = () => {
 
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className={`text-xs font-bold ${isToday ? 'text-blue-950 font-black' : 'text-slate-800'}`}>
+                          <p className={`text-xs font-bold ${isToday ? 'text-blue-950 font-black' : isPast ? 'text-slate-600' : 'text-slate-800'}`}>
                             {dayInfo.fullName}, {day} {MONTH_NAMES[selectedMonth - 1]}
                           </p>
                           {isToday && (
-                            <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-[9px] font-bold uppercase">
+                            <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-[9px] font-bold uppercase animate-pulse">
                               Hari ini
+                            </span>
+                          )}
+                          {isPast && (
+                            <span className="px-1.5 py-0.2 rounded-md bg-slate-200/60 text-slate-500 text-[9px] font-semibold">
+                              Lewat
                             </span>
                           )}
                         </div>
@@ -448,8 +475,54 @@ export const ScheduleView = () => {
                     </div>
                   </div>
                 );
-              })}
-            </div>
+              };
+
+              return (
+                <div className="space-y-3">
+                  {pastDays.length > 0 && (
+                    <div className="mb-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowPastDays(prev => !prev)}
+                        className="w-full py-2.5 px-4 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-between transition-all border border-slate-200/90 shadow-2xs group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <History className="w-4 h-4 text-slate-500 group-hover:text-blue-600 transition-colors" />
+                          <span>
+                            {showPastDays
+                              ? `Sembunyikan ${pastDays.length} Tanggal yang Sudah Lewat`
+                              : `Buka ${pastDays.length} Tanggal yang Sudah Lewat (1 - ${now.getDate() - 1} ${MONTH_NAMES[selectedMonth - 1]})`}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                          <span className="bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+                            {showPastDays ? 'Tutup' : 'Auto-Hide'}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showPastDays ? 'rotate-180' : ''}`} />
+                        </div>
+                      </button>
+
+                      {showPastDays && (
+                        <div className="space-y-2 mt-2 pt-2 border-t border-dashed border-slate-200 animate-fade-in opacity-85">
+                          {pastDays.map(day => renderDayCard(day, true))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    {upcomingDays.length === 0 ? (
+                      <div className="text-center py-8 text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200">
+                        <p className="font-semibold">Semua tanggal di bulan ini sudah lewat.</p>
+                        <p className="text-[11px] text-slate-400 mt-1">Klik tombol di atas untuk membuka riwayat jadwal.</p>
+                      </div>
+                    ) : (
+                      upcomingDays.map(day => renderDayCard(day, false))
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -640,6 +713,18 @@ export const ScheduleView = () => {
         {/* View Mode Tabs */}
         <div className="flex items-center p-1 bg-slate-100 rounded-2xl w-full sm:w-auto overflow-x-auto">
           <button
+            onClick={() => setViewMode('my_agenda')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              viewMode === 'my_agenda'
+                ? 'bg-blue-600 text-white shadow-sm ring-2 ring-blue-500/20'
+                : 'text-blue-700 hover:text-blue-900 bg-blue-50/80 font-bold'
+            }`}
+          >
+            <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+            Agenda Saya
+          </button>
+
+          <button
             onClick={() => setViewMode('daily')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
               viewMode === 'daily'
@@ -697,6 +782,395 @@ export const ScheduleView = () => {
           Kirim ke WA
         </button>
       </div>
+
+      {/* MODE 0: AGENDA SAYA (KHUSUS ADMIN MELIHAT JADWAL DIRI SENDIRI SEPERTI STAF) */}
+      {viewMode === 'my_agenda' && (
+        <div className="space-y-4 animate-fade-in">
+          {/* Banner Akses Agenda Admin */}
+          <div className="bg-gradient-to-r from-indigo-50 via-sky-50 to-emerald-50 border border-indigo-200 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-2xl shadow-sm shrink-0">
+                {currentUser?.avatar || '👨‍⚕️'}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900">
+                    Agenda Saya: {currentUser?.namaLengkap || currentUser?.nama}
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-700 border border-indigo-300 uppercase">
+                    Admin / Koordinator
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 flex items-center gap-1.5 mt-0.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span>Jadwal Penugasan Pribadi Anda • Pos: <strong>{staffLocations.map(l => l.nama).join(', ')}</strong></span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                onClick={handleShareStaffWhatsApp}
+                className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span>Share ke WA</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('monitoring')}
+                className="flex-1 sm:flex-none px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all"
+              >
+                <CalendarCheck className="w-3.5 h-3.5" />
+                <span>Check-In Hari Ini</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Sub View Toggle: Agenda Harian vs Kalender Pribadi */}
+          <div className="flex items-center justify-between bg-white rounded-2xl p-2.5 px-4 border border-slate-200 shadow-2xs">
+            <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+              <UserCheck className="w-4 h-4 text-blue-600" />
+              Tampilan Agenda Dinas Anda:
+            </span>
+            <div className="flex items-center p-1 bg-slate-100 rounded-xl">
+              <button
+                onClick={() => setSelectedStaffSubView('agenda')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                  selectedStaffSubView === 'agenda'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                <span>Agenda Harian</span>
+              </button>
+              <button
+                onClick={() => setSelectedStaffSubView('calendar')}
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                  selectedStaffSubView === 'calendar'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Kalender Jadwal</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Ringkasan Shift Bulan Ini Admin */}
+          {(() => {
+            let adminCountP = 0, adminCountS = 0, adminCountM = 0, adminCountL = 0, adminCountDouble = 0;
+            daysArray.forEach(day => {
+              let isWorking = false;
+              staffLocations.forEach(loc => {
+                const key = `${currentUser?.id}_${loc.id}`;
+                const shift = schedules[key]?.[day] || 'L';
+                if (shift === 'P') adminCountP++;
+                else if (shift === 'S') adminCountS++;
+                else if (shift === 'M') adminCountM++;
+                else if (shift === 'P/M' || shift === 'P/S' || shift === 'S/M' || shift === 'PSM') adminCountDouble++;
+                else if (shift.includes('P') || shift.includes('S') || shift.includes('M')) adminCountP++;
+                if (shift !== 'L') isWorking = true;
+              });
+              if (!isWorking) adminCountL++;
+            });
+
+            return (
+              <div className={`grid grid-cols-2 gap-3 ${adminCountDouble > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
+                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-center">
+                  <span className="text-xs font-bold text-emerald-800">Shift Pagi (P)</span>
+                  <p className="text-2xl font-black text-emerald-700 mt-0.5">{adminCountP} <span className="text-xs font-semibold">hari</span></p>
+                </div>
+                <div className="bg-sky-50 border border-sky-200 rounded-2xl p-3 text-center">
+                  <span className="text-xs font-bold text-sky-800">Shift Siang (S)</span>
+                  <p className="text-2xl font-black text-sky-700 mt-0.5">{adminCountS} <span className="text-xs font-semibold">hari</span></p>
+                </div>
+                <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-3 text-center">
+                  <span className="text-xs font-bold text-indigo-800">Shift Malam (M)</span>
+                  <p className="text-2xl font-black text-indigo-700 mt-0.5">{adminCountM} <span className="text-xs font-semibold">hari</span></p>
+                </div>
+                {adminCountDouble > 0 && (
+                  <div className="bg-purple-50 border border-purple-200 rounded-2xl p-3 text-center">
+                    <span className="text-xs font-bold text-purple-800">Pagi-Malam / Double</span>
+                    <p className="text-2xl font-black text-purple-700 mt-0.5">{adminCountDouble} <span className="text-xs font-semibold">hari</span></p>
+                  </div>
+                )}
+                <div className="bg-slate-100 border border-slate-200 rounded-2xl p-3 text-center">
+                  <span className="text-xs font-bold text-slate-700">Lepas / Libur (L)</span>
+                  <p className="text-2xl font-black text-slate-700 mt-0.5">{adminCountL} <span className="text-xs font-semibold">hari</span></p>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* SUB VIEW 1: AGENDA HARIAN ADMIN (DILENGKAPI AUTO-HIDE TANGGAL LEWAT) */}
+          {selectedStaffSubView === 'agenda' && (
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-blue-600" />
+                  Daftar Agenda Dinas Anda ({MONTH_NAMES[selectedMonth - 1]} {selectedYear})
+                </h4>
+                <span className="text-[11px] text-slate-500 font-medium hidden sm:inline">
+                  💡 Ketuk untuk melihat detail shift & rekan piket
+                </span>
+              </div>
+
+              {(() => {
+                const pastDays = daysArray.filter(day => isDayInPast(day));
+                const upcomingDays = daysArray.filter(day => !isDayInPast(day));
+
+                const renderAdminDayCard = (day, isPast = false) => {
+                  const dayInfo = getDayInfo(day);
+                  const isToday = now.getDate() === day && now.getMonth() + 1 === selectedMonth && now.getFullYear() === selectedYear;
+
+                  const dayShifts = staffLocations.map(loc => {
+                    const key = `${currentUser.id}_${loc.id}`;
+                    return { loc, shift: schedules[key]?.[day] || 'L' };
+                  });
+
+                  const isOff = dayShifts.every(s => s.shift === 'L');
+                  const primaryItem = dayShifts[0];
+
+                  return (
+                    <div
+                      key={day}
+                      onClick={() => setDetailModalData({
+                        day,
+                        member: currentUser,
+                        location: primaryItem?.loc,
+                        shiftCode: primaryItem?.shift || 'L'
+                      })}
+                      className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all hover:scale-[1.01] active:scale-[0.99] ${
+                        isToday
+                          ? 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-400/20 shadow-xs'
+                          : isOff
+                          ? 'border-slate-100 bg-slate-50/40 text-slate-400'
+                          : isPast
+                          ? 'border-slate-200/60 bg-slate-50/50 text-slate-600'
+                          : 'border-slate-200 bg-white hover:bg-slate-50/80 shadow-xs'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-11 h-11 rounded-xl flex flex-col items-center justify-center font-bold text-xs shrink-0 ${
+                          isToday ? 'bg-blue-600 text-white shadow-sm' : isOff ? 'bg-slate-100 text-slate-500' : isPast ? 'bg-slate-100 text-slate-600' : 'bg-slate-100 text-slate-800'
+                        }`}>
+                          <span className="text-[10px] uppercase font-semibold leading-none">{dayInfo.shortName}</span>
+                          <span className="text-sm font-black leading-tight mt-0.5">{day}</span>
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className={`text-xs font-bold ${isToday ? 'text-blue-950 font-black' : isPast ? 'text-slate-600' : 'text-slate-800'}`}>
+                              {dayInfo.fullName}, {day} {MONTH_NAMES[selectedMonth - 1]}
+                            </p>
+                            {isToday && (
+                              <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-[9px] font-bold uppercase animate-pulse">
+                                Hari ini
+                              </span>
+                            )}
+                            {isPast && (
+                              <span className="px-1.5 py-0.2 rounded-md bg-slate-200/60 text-slate-500 text-[9px] font-semibold">
+                                Lewat
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-[11px] text-slate-500 mt-0.5 truncate">
+                            {isOff ? 'Hari Lepas / Libur Piket' : staffLocations.map(l => l.nama).join(' & ')}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {dayShifts.map(({ loc, shift }) => {
+                          const shiftObj = shifts.find(s => s.kode === shift);
+                          const isLibur = shift === 'L';
+                          return (
+                            <div
+                              key={loc.id}
+                              className={`px-3 py-1.5 rounded-xl text-center flex items-center gap-1.5 ${
+                                isLibur
+                                  ? 'bg-slate-100 text-slate-500 text-xs'
+                                  : shift === 'P'
+                                  ? 'bg-emerald-100 text-emerald-800 font-bold border border-emerald-300'
+                                  : shift === 'S'
+                                  ? 'bg-sky-100 text-sky-800 font-bold border border-sky-300'
+                                  : shift === 'M'
+                                  ? 'bg-indigo-100 text-indigo-800 font-bold border border-indigo-300'
+                                  : shift === 'P/M'
+                                  ? 'bg-purple-100 text-purple-800 font-bold border border-purple-300'
+                                  : 'bg-amber-100 text-amber-800 font-bold border border-amber-300'
+                              }`}
+                            >
+                              <span className="text-xs font-black">{shift}</span>
+                              <span className="text-[11px] font-semibold hidden sm:inline">({shiftObj?.nama || 'Libur'})</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                };
+
+                return (
+                  <div className="space-y-3">
+                    {pastDays.length > 0 && (
+                      <div className="mb-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowPastDays(prev => !prev)}
+                          className="w-full py-2.5 px-4 rounded-2xl bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-between transition-all border border-slate-200/90 shadow-2xs group"
+                        >
+                          <div className="flex items-center gap-2">
+                            <History className="w-4 h-4 text-slate-500 group-hover:text-blue-600 transition-colors" />
+                            <span>
+                              {showPastDays
+                                ? `Sembunyikan ${pastDays.length} Tanggal yang Sudah Lewat`
+                                : `Buka ${pastDays.length} Tanggal yang Sudah Lewat (1 - ${now.getDate() - 1} ${MONTH_NAMES[selectedMonth - 1]})`}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">
+                            <span className="bg-slate-200/70 text-slate-700 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+                              {showPastDays ? 'Tutup' : 'Auto-Hide'}
+                            </span>
+                            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${showPastDays ? 'rotate-180' : ''}`} />
+                          </div>
+                        </button>
+
+                        {showPastDays && (
+                          <div className="space-y-2 mt-2 pt-2 border-t border-dashed border-slate-200 animate-fade-in opacity-85">
+                            {pastDays.map(day => renderAdminDayCard(day, true))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      {upcomingDays.length === 0 ? (
+                        <div className="text-center py-8 text-xs text-slate-500 bg-slate-50 rounded-2xl border border-slate-200">
+                          <p className="font-semibold">Semua tanggal di bulan ini sudah lewat.</p>
+                          <p className="text-[11px] text-slate-400 mt-1">Klik tombol di atas untuk membuka riwayat jadwal.</p>
+                        </div>
+                      ) : (
+                        upcomingDays.map(day => renderAdminDayCard(day, false))
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* SUB VIEW 2: KALENDER PRIBADI ADMIN */}
+          {selectedStaffSubView === 'calendar' && (
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <LayoutGrid className="w-4 h-4 text-blue-600" />
+                  Kalender Piket Anda ({MONTH_NAMES[selectedMonth - 1]} {selectedYear})
+                </h4>
+                <span className="text-[11px] text-slate-500 font-medium">
+                  💡 Ketuk tanggal untuk melihat detail lengkap & rekan piket
+                </span>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 sm:gap-2">
+                {DAY_NAMES_SHORT.map((name, idx) => (
+                  <div
+                    key={name}
+                    className={`py-1.5 text-center text-[11px] sm:text-xs font-bold rounded-xl ${
+                      idx === 0 ? 'bg-rose-50 text-rose-600' : idx === 5 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                    }`}
+                  >
+                    {name}
+                  </div>
+                ))}
+
+                {Array.from({ length: new Date(selectedYear, selectedMonth - 1, 1).getDay() }).map((_, i) => (
+                  <div key={`empty-${i}`} className="min-h-14 sm:min-h-20 bg-slate-50/50 rounded-2xl border border-dashed border-slate-100" />
+                ))}
+
+                {daysArray.map((day) => {
+                  const dayInfo = getDayInfo(day);
+                  const isToday = now.getDate() === day && now.getMonth() + 1 === selectedMonth && now.getFullYear() === selectedYear;
+
+                  const dayShifts = [];
+                  staffLocations.forEach(loc => {
+                    const key = `${currentUser.id}_${loc.id}`;
+                    const shift = schedules[key]?.[day] || 'L';
+                    dayShifts.push({ loc, shift });
+                  });
+
+                  const primaryShift = dayShifts[0]?.shift || 'L';
+                  const isOff = dayShifts.every(s => s.shift === 'L');
+
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => setDetailModalData({
+                        day,
+                        member: currentUser,
+                        location: dayShifts[0]?.loc,
+                        shiftCode: primaryShift
+                      })}
+                      className={`min-h-14 sm:min-h-20 p-1 sm:p-2 rounded-2xl border flex flex-col justify-between text-left transition-all hover:scale-102 active:scale-98 cursor-pointer ${
+                        isToday
+                          ? 'border-blue-500 bg-blue-50/70 ring-2 ring-blue-400/30 shadow-xs'
+                          : isOff
+                          ? 'border-slate-200/80 bg-slate-50/60'
+                          : 'border-slate-200 bg-white hover:border-blue-300 shadow-xs'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className={`text-[10px] sm:text-xs font-black ${
+                          isToday ? 'text-blue-700 bg-blue-100 px-1 rounded' : dayInfo.isSunday ? 'text-rose-600' : 'text-slate-800'
+                        }`}>
+                          {day}
+                        </span>
+                        {isToday && (
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-600 sm:hidden" />
+                        )}
+                      </div>
+
+                      <div className="flex flex-col gap-1 mt-1 w-full">
+                        {dayShifts.map(({ loc, shift }) => {
+                          const isLibur = shift === 'L';
+                          return (
+                            <div
+                              key={loc.id}
+                              className={`w-full py-0.5 sm:py-1 px-1 rounded-lg text-center flex items-center justify-center gap-1 ${
+                                isLibur
+                                  ? 'bg-slate-100 text-slate-400 text-[9px]'
+                                  : shift === 'P'
+                                  ? 'bg-emerald-100 text-emerald-800 font-extrabold border border-emerald-300'
+                                  : shift === 'S'
+                                  ? 'bg-sky-100 text-sky-800 font-extrabold border border-sky-300'
+                                  : shift === 'M'
+                                  ? 'bg-indigo-100 text-indigo-800 font-extrabold border border-indigo-300'
+                                  : shift === 'P/M'
+                                  ? 'bg-purple-100 text-purple-800 font-extrabold border border-purple-300'
+                                  : 'bg-amber-100 text-amber-800 font-extrabold border border-amber-300'
+                              }`}
+                            >
+                              <span className="text-[11px] sm:text-xs font-black leading-none">{shift}</span>
+                              <span className="text-[9px] font-bold hidden sm:inline truncate">
+                                {loc.kode || loc.nama}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* MODE 1: INPUT CEPAT HARIAN */}
       {viewMode === 'daily' && (

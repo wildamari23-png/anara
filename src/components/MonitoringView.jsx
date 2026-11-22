@@ -113,7 +113,7 @@ export const MonitoringView = ({ onOpenSwap }) => {
             Shift {currentShiftName} Sedang Berlangsung
           </h2>
           <p className="text-emerald-50 text-sm mt-1 max-w-lg">
-            Jam operasional shift saat ini: <span className="font-bold underline decoration-white/40">{shiftTimeRange} WITA</span> • Hari ke-{currentDay} bulan ini
+            Jam operasional shift saat ini: <span className="font-bold underline decoration-white/40">{shiftTimeRange} WIB</span> • Hari ke-{currentDay} bulan ini
           </p>
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -160,7 +160,7 @@ export const MonitoringView = ({ onOpenSwap }) => {
                 <CheckCircle2 className="w-7 h-7 text-emerald-600 shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-emerald-900">Sudah Konfirmasi Hadir Hari Ini</p>
-                  <p className="text-[11px] text-emerald-700">Tercatat jam {userCheckedIn.time} WITA di {userCheckedIn.locationName}</p>
+                  <p className="text-[11px] text-emerald-700">Tercatat jam {userCheckedIn.time} WIB di {userCheckedIn.locationName}</p>
                 </div>
               </div>
               <span className="text-[11px] font-bold text-emerald-800 bg-emerald-200/60 px-2.5 py-1 rounded-lg">
@@ -183,7 +183,7 @@ export const MonitoringView = ({ onOpenSwap }) => {
                   <div>
                     <p className="font-bold">Bukan Jam Dinas Anda! (Check-In Terkunci)</p>
                     <p className="text-[11px] text-amber-800 mt-0.5">
-                      Jadwal dinas Anda hari ini adalah <strong>Shift {userTodayShift} ({userShiftInfo.name}: {userShiftInfo.time} WITA)</strong>.
+                      Jadwal dinas Anda hari ini adalah <strong>Shift {userTodayShift} ({userShiftInfo.name}: {userShiftInfo.time} WIB)</strong>.
                       Saat ini adalah <strong>Shift {currentShiftName} ({shiftTimeRange})</strong>.
                       Anda tidak dapat check-in di luar jam dinas yang telah ditentukan.
                     </p>
