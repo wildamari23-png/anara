@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { testSupabaseConnection } from '../supabaseClient';
-import { Settings, Cloud, Bell, Smartphone, Shield, LogOut, Check, RefreshCw, Key, Database, Info, GitBranch, ExternalLink } from 'lucide-react';
+import { Settings, Cloud, Bell, Smartphone, Shield, LogOut, Check, RefreshCw, Key, Database, Info, GitBranch, ExternalLink, User, Plus, Edit2 } from 'lucide-react';
+import { MemberEditModal } from './MemberEditModal';
 
 const GithubIcon = ({ className = "w-5 h-5" }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -13,6 +14,7 @@ export const SettingsView = ({ onOpenLogin }) => {
   const {
     currentUser,
     logout,
+    members,
     sendWebNotification,
     syncSupabase,
     isSyncing,
@@ -20,6 +22,10 @@ export const SettingsView = ({ onOpenLogin }) => {
     notificationPermission,
     requestNotificationPermission
   } = useApp();
+
+  const isAdmin = currentUser?.role === 'admin';
+  const [editingMember, setEditingMember] = useState(null);
+  const [isCreatingMember, setIsCreatingMember] = useState(false);
 
   // Supabase Local Form State
   const [supabaseUrl, setSupabaseUrl] = useState(() => localStorage.getItem('kp_supabase_url') || '');
@@ -126,6 +132,64 @@ export const SettingsView = ({ onOpenLogin }) => {
           </div>
         )}
       </div>
+
+      {/* 1.5. Setup & Edit Nama Staf dan Admin (Khusus Admin) */}
+      {isAdmin && (
+        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-emerald-100 text-emerald-700 rounded-xl">
+                <User className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Setup & Edit Nama Staf / Admin</h3>
+                <p className="text-xs text-slate-500">Ubah nama panggilan jadwal, nama lengkap, gelar, password, dan hak akses</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsCreatingMember(true)}
+              className="w-full sm:w-auto px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-all active:scale-95"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Tambah Petugas Baru</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-80 overflow-y-auto pr-1">
+            {members.map(m => (
+              <div
+                key={m.id}
+                className="p-3.5 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 flex items-center justify-between gap-2 transition-all"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-2xl">{m.avatar}</span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-900 truncate">
+                      {m.nama} <span className="text-slate-400 font-normal">({m.namaLengkap || m.nama})</span>
+                    </p>
+                    <p className="text-[10px] text-slate-500 truncate">
+                      {m.jabatan} • <span className={`font-bold uppercase ${m.role === 'admin' ? 'text-amber-600' : 'text-blue-600'}`}>{m.role}</span>
+                    </p>
+                    <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                      Password: {m.password || '123456'}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setEditingMember(m)}
+                  className="px-2.5 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 transition-all text-xs font-bold flex items-center gap-1 shrink-0 shadow-2xs"
+                  title="Edit Nama & Profil Petugas"
+                >
+                  <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="hidden xs:inline">Edit</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 2. Koneksi GitHub Repository */}
       <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
@@ -348,6 +412,16 @@ export const SettingsView = ({ onOpenLogin }) => {
           <li>Aplikasi <strong>Kita Piket</strong> akan terpasang di HP Anda dan bisa dibuka secara mandiri layar penuh.</li>
         </ol>
       </div>
+      {/* Modal Setup / Edit Petugas Staf & Admin */}
+      <MemberEditModal
+        isOpen={Boolean(editingMember) || isCreatingMember}
+        member={editingMember}
+        mode={isCreatingMember ? 'create' : 'edit'}
+        onClose={() => {
+          setEditingMember(null);
+          setIsCreatingMember(false);
+        }}
+      />
     </div>
   );
 };

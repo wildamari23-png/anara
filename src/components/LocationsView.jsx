@@ -16,8 +16,10 @@ import {
   Building,
   CheckCircle2,
   AlertTriangle,
-  Info
+  Info,
+  UserCheck
 } from 'lucide-react';
+import { MemberEditModal } from './MemberEditModal';
 
 const COLOR_PALETTE = [
   '#10b981', // Emerald
@@ -66,6 +68,10 @@ export const LocationsView = () => {
   const [selectedLocIds, setSelectedLocIds] = useState([]);
   const [resetOption, setResetOption] = useState('keep'); // 'keep' (Tetap) | 'reset' (Reset)
   const [isSaving, setIsSaving] = useState(false);
+
+  // State for Member Setup / Edit Profile Modal (Admin)
+  const [editingMember, setEditingMember] = useState(null);
+  const [isCreatingMember, setIsCreatingMember] = useState(false);
 
   // Open Create Location Modal
   const handleOpenCreate = () => {
@@ -402,6 +408,19 @@ export const LocationsView = () => {
             </div>
           </div>
 
+          <div className="flex items-center justify-between pb-1">
+            <p className="text-xs font-bold text-slate-700">Daftar Petugas Piket ({members.length}):</p>
+            {isAdmin && (
+              <button
+                onClick={() => setIsCreatingMember(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs active:scale-95"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Tambah Petugas Baru</span>
+              </button>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {members.map((mem) => {
               const assignedLocs = locations.filter(l => mem.assignedLocations?.includes(l.id));
@@ -428,17 +447,31 @@ export const LocationsView = () => {
                           </span>
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5">{mem.jabatan}</p>
+                        {mem.noHp && (
+                          <p className="text-[11px] text-slate-400 mt-0.5 font-mono">{mem.noHp}</p>
+                        )}
                       </div>
                     </div>
 
                     {isAdmin && (
-                      <button
-                        onClick={() => handleOpenReassign(mem)}
-                        className="px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold text-xs flex items-center gap-1.5 transition-all shadow-2xs"
-                      >
-                        <ArrowRightLeft className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Pindah Pos</span>
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          onClick={() => setEditingMember(mem)}
+                          className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 text-xs font-bold flex items-center gap-1 transition-all"
+                          title="Edit Nama, Profil, Password & Hak Akses"
+                        >
+                          <Edit2 className="w-3 h-3 text-slate-500" />
+                          <span className="hidden sm:inline">Edit Data</span>
+                        </button>
+                        <button
+                          onClick={() => handleOpenReassign(mem)}
+                          className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 font-bold text-xs flex items-center gap-1 transition-all shadow-2xs"
+                          title="Pindah / Mutasi Pos Lokasi"
+                        >
+                          <ArrowRightLeft className="w-3 h-3 text-emerald-600" />
+                          <span>Pindah Pos</span>
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -842,6 +875,16 @@ export const LocationsView = () => {
           </div>
         </div>
       )}
+      {/* MODAL 3: SETUP / EDIT DATA NAMA STAF & ADMIN */}
+      <MemberEditModal
+        isOpen={Boolean(editingMember) || isCreatingMember}
+        member={editingMember}
+        mode={isCreatingMember ? 'create' : 'edit'}
+        onClose={() => {
+          setEditingMember(null);
+          setIsCreatingMember(false);
+        }}
+      />
     </div>
   );
 };

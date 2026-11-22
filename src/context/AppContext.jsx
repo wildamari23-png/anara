@@ -375,6 +375,57 @@ export const AppProvider = ({ children }) => {
     return { success: true, message: `Penempatan ${member.nama} sukses disimpan!` };
   };
 
+  // Add Member / Petugas Baru (Admin Only)
+  const addMember = (memberData) => {
+    const newMember = {
+      ...memberData,
+      id: 'mem-' + Date.now(),
+      nama: memberData.nama.trim(),
+      namaLengkap: memberData.namaLengkap ? memberData.namaLengkap.trim() : memberData.nama.trim(),
+      jabatan: memberData.jabatan ? memberData.jabatan.trim() : 'Petugas Piket',
+      noHp: memberData.noHp ? memberData.noHp.trim() : '',
+      email: memberData.email ? memberData.email.trim() : `${memberData.nama.toLowerCase().replace(/\s+/g, '')}@kitapiket.id`,
+      pin: memberData.pin ? memberData.pin.trim() : '1234',
+      password: memberData.password ? memberData.password.trim() : (memberData.role === 'admin' ? 'admin123' : '123456'),
+      role: memberData.role || 'staf',
+      avatar: memberData.avatar || '👨‍⚕️',
+      assignedLocations: memberData.assignedLocations || [locations[0]?.id || 'loc-1']
+    };
+    setMembers(prev => [...prev, newMember]);
+    sendWebNotification('Petugas Ditambahkan 👤', `Akun ${newMember.nama} (${newMember.role === 'admin' ? 'Admin' : 'Staf'}) berhasil didaftarkan.`);
+    return newMember;
+  };
+
+  // Update Member / Edit Data Staf & Admin (Admin Only)
+  const updateMember = (id, updatedData) => {
+    setMembers(prev => prev.map(m => {
+      if (m.id === id) {
+        return { ...m, ...updatedData };
+      }
+      return m;
+    }));
+
+    // If current logged in user is being updated, update session too
+    if (currentUser?.id === id) {
+      setCurrentUser(prev => prev ? { ...prev, ...updatedData } : prev);
+    }
+
+    sendWebNotification('Profil Petugas Diperbarui ✏️', `Data profil "${updatedData.nama || 'Petugas'}" berhasil diperbarui.`);
+    return { success: true };
+  };
+
+  // Delete Member
+  const deleteMember = (id) => {
+    const member = members.find(m => m.id === id);
+    if (!member) return;
+    if (members.length <= 1) {
+      alert('Tidak dapat menghapus. Harus menyisakan minimal 1 petugas.');
+      return;
+    }
+    setMembers(prev => prev.filter(m => m.id !== id));
+    sendWebNotification('Petugas Dihapus 🗑️', `Akun ${member.nama} telah dihapus dari sistem.`);
+  };
+
   // Login & Logout dengan Sistem Password & PIN (Sekali Login Tetap Login)
   const loginWithPassword = (memberId, password) => {
     const member = members.find(m => m.id === memberId);
@@ -479,6 +530,9 @@ export const AppProvider = ({ children }) => {
       deleteLocation,
       reassignMemberLocation,
       members,
+      addMember,
+      updateMember,
+      deleteMember,
       shifts,
       schedules,
       updateSchedule,
