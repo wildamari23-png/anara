@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { testSupabaseConnection } from '../supabaseClient';
-import { Settings, Cloud, Bell, Smartphone, Shield, LogOut, Check, RefreshCw, Key, Database, Info, GitBranch, ExternalLink, User, Plus, Edit2 } from 'lucide-react';
+import { Settings, Cloud, Bell, Smartphone, Shield, LogOut, Check, RefreshCw, Key, Database, Info, GitBranch, ExternalLink, User, Plus, Edit2, Clock } from 'lucide-react';
 import { MemberEditModal } from './MemberEditModal';
 
 const GithubIcon = ({ className = "w-5 h-5" }) => (
@@ -20,7 +20,8 @@ export const SettingsView = ({ onOpenLogin }) => {
     isSyncing,
     syncStatus,
     notificationPermission,
-    requestNotificationPermission
+    requestNotificationPermission,
+    shifts
   } = useApp();
 
   const isAdmin = currentUser?.role === 'admin';
@@ -190,6 +191,41 @@ export const SettingsView = ({ onOpenLogin }) => {
           </div>
         </div>
       )}
+
+      {/* Master Data Shift Dinas & Jam Operasional */}
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-indigo-100 text-indigo-700 rounded-xl">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Master Data Shift & Jam Kerja</h3>
+              <p className="text-xs text-slate-500">Daftar kode shift, jam operasional, dan jam dinas termasuk Pagi-Malam</p>
+            </div>
+          </div>
+          <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-xl">
+            {shifts?.length || 8} Shift Aktif
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {(shifts || []).map((s) => (
+            <div key={s.kode} className="p-3.5 rounded-2xl border border-slate-200/80 bg-slate-50/50 hover:bg-slate-50 transition-all flex items-start gap-3">
+              <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-black shrink-0 ${s.badgeClass || 'bg-slate-600 text-white'}`}>
+                {s.kode}
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-900 truncate">{s.nama}</p>
+                <p className="text-[11px] font-semibold text-emerald-700">
+                  {s.kode === 'P/M' ? '07:00-14:00 & 21:00-07:00' : `${s.jamMulai} - ${s.jamSelesai}`} WITA
+                </p>
+                <p className="text-[10px] text-slate-500 truncate mt-0.5">{s.deskripsi}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* 2. Koneksi GitHub Repository */}
       <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">

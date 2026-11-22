@@ -291,7 +291,7 @@ export const MonitoringView = ({ onOpenSwap }) => {
                   ) : (
                     dutyToday.map(({ member: mem, shiftCode: sc }) => {
                       const shiftObj = shifts.find(s => s.kode === sc);
-                      const isShiftNow = sc === currentShiftCode;
+                      const isShiftNow = isShiftWindowActive(sc);
                       const hasAttended = attendance.some(
                         a => a.memberId === mem.id && a.date === todayDateStr && a.locationId === loc.id
                       );

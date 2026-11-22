@@ -114,6 +114,16 @@ export const INITIAL_SHIFTS = [
     deskripsi: 'Double Shift Siang & Malam'
   },
   {
+    kode: 'P/M',
+    nama: 'Pagi-Malam',
+    jamMulai: '07:00',
+    jamSelesai: '07:00',
+    warna: '#8b5cf6',
+    bgClass: 'bg-purple-100 text-purple-800 border-purple-300',
+    badgeClass: 'bg-purple-600 text-white',
+    deskripsi: 'Double Shift Pagi & Malam'
+  },
+  {
     kode: 'PSM',
     nama: 'Pagi-Siang-Malam',
     jamMulai: '07:00',

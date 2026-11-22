@@ -152,6 +152,8 @@ export const ShiftDetailModal = ({ isOpen, onClose, day, member, location, shift
             ? 'bg-sky-50/80 border-sky-200 text-sky-950'
             : shiftCode === 'M'
             ? 'bg-indigo-50/80 border-indigo-200 text-indigo-950'
+            : shiftCode === 'P/M'
+            ? 'bg-purple-50/80 border-purple-200 text-purple-950'
             : 'bg-amber-50/80 border-amber-200 text-amber-950'
         }`}>
           <div className="flex items-center justify-between mb-2">
@@ -160,7 +162,8 @@ export const ShiftDetailModal = ({ isOpen, onClose, day, member, location, shift
                 isOff ? 'bg-slate-500' :
                 shiftCode === 'P' ? 'bg-emerald-600' :
                 shiftCode === 'S' ? 'bg-sky-600' :
-                shiftCode === 'M' ? 'bg-indigo-600' : 'bg-amber-600'
+                shiftCode === 'M' ? 'bg-indigo-600' :
+                shiftCode === 'P/M' ? 'bg-purple-600' : 'bg-amber-600'
               }`}>
                 {shiftCode}
               </span>

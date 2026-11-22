@@ -185,7 +185,7 @@ export const ScheduleView = () => {
   // TAMPILAN KHUSUS STAF: HANYA MENAMPILKAN JADWAL DIRI SENDIRI (READ-ONLY)
   // =========================================================================
   if (isStaff) {
-    let countP = 0, countS = 0, countM = 0, countL = 0;
+    let countP = 0, countS = 0, countM = 0, countL = 0, countDouble = 0;
     daysArray.forEach(day => {
       let isWorking = false;
       staffLocations.forEach(loc => {
@@ -194,6 +194,7 @@ export const ScheduleView = () => {
         if (shift === 'P') countP++;
         else if (shift === 'S') countS++;
         else if (shift === 'M') countM++;
+        else if (shift === 'P/M' || shift === 'P/S' || shift === 'S/M' || shift === 'PSM') countDouble++;
         else if (shift.includes('P') || shift.includes('S') || shift.includes('M')) countP++;
         if (shift !== 'L') isWorking = true;
       });
@@ -324,7 +325,7 @@ export const ScheduleView = () => {
         </div>
 
         {/* Ringkasan Shift Bulan Ini */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className={`grid grid-cols-2 gap-3 ${countDouble > 0 ? 'sm:grid-cols-5' : 'sm:grid-cols-4'}`}>
           <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-center">
             <span className="text-xs font-bold text-emerald-800">Shift Pagi (P)</span>
             <p className="text-2xl font-black text-emerald-700 mt-0.5">{countP} <span className="text-xs font-semibold">hari</span></p>
@@ -337,6 +338,12 @@ export const ScheduleView = () => {
             <span className="text-xs font-bold text-indigo-800">Shift Malam (M)</span>
             <p className="text-2xl font-black text-indigo-700 mt-0.5">{countM} <span className="text-xs font-semibold">hari</span></p>
           </div>
+          {countDouble > 0 && (
+            <div className="bg-purple-50 border border-purple-200 rounded-2xl p-3 text-center">
+              <span className="text-xs font-bold text-purple-800">Pagi-Malam / Double</span>
+              <p className="text-2xl font-black text-purple-700 mt-0.5">{countDouble} <span className="text-xs font-semibold">hari</span></p>
+            </div>
+          )}
           <div className="bg-slate-100 border border-slate-200 rounded-2xl p-3 text-center">
             <span className="text-xs font-bold text-slate-700">Lepas / Libur (L)</span>
             <p className="text-2xl font-black text-slate-700 mt-0.5">{countL} <span className="text-xs font-semibold">hari</span></p>
@@ -428,6 +435,8 @@ export const ScheduleView = () => {
                                 ? 'bg-sky-100 text-sky-800 font-bold border border-sky-300'
                                 : shift === 'M'
                                 ? 'bg-indigo-100 text-indigo-800 font-bold border border-indigo-300'
+                                : shift === 'P/M'
+                                ? 'bg-purple-100 text-purple-800 font-bold border border-purple-300'
                                 : 'bg-amber-100 text-amber-800 font-bold border border-amber-300'
                             }`}
                           >
@@ -535,6 +544,8 @@ export const ScheduleView = () => {
                                 ? 'bg-sky-100 text-sky-800 font-extrabold border border-sky-300'
                                 : shift === 'M'
                                 ? 'bg-indigo-100 text-indigo-800 font-extrabold border border-indigo-300'
+                                : shift === 'P/M'
+                                ? 'bg-purple-100 text-purple-800 font-extrabold border border-purple-300'
                                 : 'bg-amber-100 text-amber-800 font-extrabold border border-amber-300'
                             }`}
                           >
@@ -797,6 +808,8 @@ export const ScheduleView = () => {
                                           ? 'bg-indigo-600 text-white shadow-sm ring-2 ring-indigo-600/30 font-black'
                                           : s.kode === 'L'
                                           ? 'bg-slate-600 text-white shadow-sm ring-2 ring-slate-600/30 font-black'
+                                          : s.kode === 'P/M'
+                                          ? 'bg-purple-600 text-white shadow-sm ring-2 ring-purple-600/30 font-black'
                                           : 'bg-amber-600 text-white shadow-sm font-black'
                                         : 'bg-white border border-slate-200 hover:border-slate-300 text-slate-700'
                                     }`}
@@ -1027,6 +1040,8 @@ export const ScheduleView = () => {
                                   ? 'bg-indigo-600 text-white font-bold border-indigo-600'
                                   : shift === 'L'
                                   ? 'bg-white border-slate-200 text-slate-400'
+                                  : shift === 'P/M'
+                                  ? 'bg-purple-600 text-white font-bold border-purple-600'
                                   : 'bg-amber-600 text-white font-bold border-amber-600'
                               }`}
                             >
@@ -1089,6 +1104,7 @@ export const ScheduleView = () => {
                                 shift === 'P' ? 'bg-emerald-100 text-emerald-800' :
                                 shift === 'S' ? 'bg-sky-100 text-sky-800' :
                                 shift === 'M' ? 'bg-indigo-100 text-indigo-800' :
+                                shift === 'P/M' ? 'bg-purple-100 text-purple-800' :
                                 shift === 'L' ? 'text-slate-300' : 'bg-amber-100 text-amber-800'
                               }`}>
                                 {shift}

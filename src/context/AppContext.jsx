@@ -45,7 +45,20 @@ export const AppProvider = ({ children }) => {
 
   const [shifts, setShifts] = useState(() => {
     const saved = localStorage.getItem('kp_shifts');
-    return saved ? JSON.parse(saved) : INITIAL_SHIFTS;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        const existingCodes = new Set(parsed.map(s => s.kode));
+        const missing = INITIAL_SHIFTS.filter(s => !existingCodes.has(s.kode));
+        if (missing.length > 0) {
+          const merged = [...parsed, ...missing];
+          localStorage.setItem('kp_shifts', JSON.stringify(merged));
+          return merged;
+        }
+        return parsed;
+      } catch (e) {}
+    }
+    return INITIAL_SHIFTS;
   });
 
   const [schedules, setSchedules] = useState(() => {
@@ -232,6 +245,18 @@ export const AppProvider = ({ children }) => {
         return { name: 'Pagi-Siang', time: '07:00 - 21:00', startHour: 6, startMin: 30, endHour: 21, endMin: 0 };
       case 'S/M':
         return { name: 'Siang-Malam', time: '14:00 - 07:00', startHour: 13, startMin: 30, endHour: 7, endMin: 0, crossesMidnight: true };
+      case 'P/M':
+      case 'PM':
+      case 'P-M':
+        return {
+          name: 'Pagi-Malam',
+          time: '07:00 - 14:00 & 21:00 - 07:00',
+          isSplit: true,
+          slots: [
+            { startHour: 6, startMin: 30, endHour: 14, endMin: 0 },
+            { startHour: 20, startMin: 30, endHour: 7, endMin: 0, crossesMidnight: true }
+          ]
+        };
       case 'PSM':
         return { name: 'Pagi-Siang-Malam (24 Jam)', time: '07:00 - 07:00', startHour: 0, startMin: 0, endHour: 24, endMin: 0, crossesMidnight: true };
       default:
@@ -245,10 +270,23 @@ export const AppProvider = ({ children }) => {
     if (shiftCode === 'PSM') return true;
 
     const info = getShiftTimeInfo(shiftCode);
-    if (info.startHour === -1) return false;
+    if (!info || (info.startHour === -1 && !info.isSplit)) return false;
 
     const now = new Date();
     const currentMins = now.getHours() * 60 + now.getMinutes();
+
+    if (info.isSplit && Array.isArray(info.slots)) {
+      return info.slots.some(slot => {
+        const startMins = slot.startHour * 60 + (slot.startMin || 0);
+        const endMins = slot.endHour * 60 + (slot.endMin || 0);
+        if (slot.crossesMidnight) {
+          return currentMins >= startMins || currentMins <= endMins;
+        } else {
+          return currentMins >= startMins && currentMins <= endMins;
+        }
+      });
+    }
+
     const startMins = info.startHour * 60 + (info.startMin || 0);
     const endMins = info.endHour * 60 + (info.endMin || 0);
 
